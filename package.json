@@ -1,0 +1,37 @@
+{
+  "name": "babylonjs-texture-generator",
+  "version": "1.0.0",
+  "description": "A tool that generates PVRTC, ETC1, ETC2, ASTC textures from png and jpg files.",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "npm install && npm run lint && node ./node_modules/typescript/lib/tsc.js",
+    "lint": "node ./node_modules/tslint/bin/tslint './lib/*.ts' --type-check -p .",
+    "prepublishOnly": "npm run build",
+    "start": "node ./node_modules/typescript/lib/tsc.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Evolution Gaming",
+  "license": "Apache 2.0",
+  "repository": "https://github.com/evolution-gaming/babylonjs-texture-generator",
+  "keywords": [
+    "babylonjs",
+    "textures",
+    "pvrtc",
+    "etc1",
+    "etc2",
+    "astc",
+    "pvrtextool",
+    "pvrtextoolcli"
+  ],
+  "dependencies": {
+    "@types/shelljs": "^0.7.2",
+    "shelljs": "^0.7.8"
+  },
+  "devDependencies": {
+    "@types/node": "^8.0.14",
+    "tslint": "^5.5.0",
+    "tslint-eslint-rules": "3.4.0",
+    "typescript": "^2.4.1"
+  }
+}

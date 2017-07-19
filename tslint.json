@@ -1,0 +1,99 @@
+{
+  "extends": ["tslint:latest", "tslint-eslint-rules"],
+  "rules": {
+    "arrow-parens": false,
+    "array-type": false,
+    "ban": [
+      true,
+      [ "_", "forEach" ],
+      [ "_", "each" ]
+    ],
+    "interface-name": [true, "never-prefix"],
+    "interface-over-type-literal": false,
+    "import-spacing": false,
+    "jsx-no-multiline-js": false,
+    "jsx-wrap-multiline": false,
+    "jsx-boolean-value": false,
+    "ban-types": false,
+    "linebreak-style": [true, "LF"],
+    "max-classes-per-file": [true, 3],
+    "no-angle-bracket-type-assertion": true,
+    "no-default-export": false,
+    "no-inferrable-types": true,
+    "no-invalid-this": [
+      true,
+      "check-function-in-method"
+    ],
+    "no-null-keyword": false,
+    "no-require-imports": false,
+    "no-string-literal": false,
+    "no-switch-case-fall-through": true,
+    "no-use-before-declare": true,
+    "no-var-requires": false,
+    "object-literal-key-quotes": [true, "consistent-as-needed"],
+    "object-literal-sort-keys": false,
+    "ordered-imports": false,
+    "prefer-for-of": false,
+    "space-in-parens": [true, "never"],
+    "triple-equals": [
+      true,
+      "allow-null-check",
+      "allow-undefined-check"
+    ],
+    "variable-name": [
+      true,
+      "check-format",
+      "allow-leading-underscore",
+      "ban-keywords",
+      "allow-pascal-case"
+    ],
+    "no-constant-condition": true,
+    "no-control-regex": true,
+    "no-duplicate-case": true,
+    "no-empty-character-class": true,
+    "no-empty-interface": false,
+    "no-ex-assign": true,
+    "no-extra-boolean-cast": true,
+    "no-extra-semi": false,
+    "no-inner-declarations": [
+      true,
+      "both"
+    ],
+    "no-invalid-regexp": true,
+    "no-irregular-whitespace": true,
+    "no-regex-spaces": true,
+    "no-sparse-arrays": true,
+    "no-unexpected-multiline": true,
+    "space-before-function-paren": [
+      true,
+      {
+        "anonymous": "always",
+        "named": "never",
+        "asyncArrow": "always"
+      }
+    ],
+    "valid-typeof": true,
+    "array-bracket-spacing": [
+      true,
+      "never"
+    ],
+    "block-spacing": [
+      true,
+      "always"
+    ],
+    "brace-style": [
+      true,
+      "1tbs",
+      {
+        "allowSingleLine": true
+      }
+    ],
+    "ter-indent": [true, 4, {
+      "SwitchCase": 1
+    }],
+    "object-curly-spacing": [
+      true,
+      "always"
+    ]
+  }
+}
