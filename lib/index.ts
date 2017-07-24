@@ -1,6 +1,7 @@
 import { join } from "path";
 import { statSync, readdirSync } from "fs";
 import * as shelljs from "shelljs";
+import * as fs from "fs";
 
 export enum TextureType {
     PVRTC = "PVRTC",
@@ -53,7 +54,10 @@ function readImages({ PVRTexToolCLI, inputDir, quality, exportFormats }: Texture
             if (["jpg", "jpeg"].indexOf(extension) >= 0) {
                 convertImage({ PVRTexToolCLI, file: filePath, quality, hasAlpha: false, exportFormats });
             } else if ("png" === extension) {
-                convertImage({ PVRTexToolCLI, file: filePath, quality, hasAlpha: true, exportFormats });
+                hasAlpha(filePath, function(err, _hasAlpha){
+                    if (err) throw err;
+                    convertImage({ PVRTexToolCLI, file: filePath, quality, hasAlpha: _hasAlpha, exportFormats });
+                });
             }
         }
     });
@@ -107,6 +111,25 @@ function convertToASTC({ PVRTexToolCLI, file, quality }: CliConverterProps) {
     shelljs.exec(`${PVRTexToolCLI} -i "${file}" -flip y -pot + -m -f ASTC_8x8,UBN,lRGB -q ${fileQuality} -o "${filename}-astc.ktx"`);
 }
 
+function hasAlpha(png, fn) {
+    if ('string' == typeof png) return fromFile(png, fn);
+    return 6 == png[25];
+}
+
+function fromFile(file, fn) {
+    var buf = new Buffer(1);
+    fs.open(file, 'r', function(err, fd){
+        if (err) return fn(err);
+        fs.read(fd, buf, 0, 1, 25, function(err, read, buf){
+            if (err) return fn(err);
+            fs.close(fd, function(err){
+                fn(err, 6 == buf[0]);
+            });
+        });
+    });
+}
+
 if (module && module.hasOwnProperty("exports")) {
     module.exports = generateTextures;
 }
+
