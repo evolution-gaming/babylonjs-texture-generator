@@ -1,12 +1,15 @@
 import { join } from "path";
 import { statSync, readdirSync } from "fs";
 import * as shelljs from "shelljs";
+import * as fs from "fs";
+import ErrnoException = NodeJS.ErrnoException;
 
 export enum TextureType {
     PVRTC = "PVRTC",
     ETC1 = "ETC1",
     ETC2 = "ETC2",
     ASTC = "ASTC",
+    DXT = "DXT"
 }
 
 export enum TextureQuality {
@@ -24,7 +27,7 @@ export interface TextureGeneratorProps {
 interface CliConverterProps {
     PVRTexToolCLI: string;
     file: string;
-    quality: string;
+    quality?: string;
     hasAlpha?: boolean;
 }
 
@@ -53,7 +56,10 @@ function readImages({ PVRTexToolCLI, inputDir, quality, exportFormats }: Texture
             if (["jpg", "jpeg"].indexOf(extension) >= 0) {
                 convertImage({ PVRTexToolCLI, file: filePath, quality, hasAlpha: false, exportFormats });
             } else if ("png" === extension) {
-                convertImage({ PVRTexToolCLI, file: filePath, quality, hasAlpha: true, exportFormats });
+                hasAlpha(filePath, function(err, _hasAlpha){
+                    if (err) throw err;
+                    convertImage({ PVRTexToolCLI, file: filePath, quality, hasAlpha: _hasAlpha, exportFormats });
+                });
             }
         }
     });
@@ -71,6 +77,9 @@ function convertImage({ PVRTexToolCLI, file, quality, hasAlpha, exportFormats }:
     }
     if (exportFormats.indexOf(TextureType.ASTC) >= 0) {
         convertToASTC({ PVRTexToolCLI, file, quality });
+    }
+    if (exportFormats.indexOf(TextureType.DXT) >= 0) {
+        convertToDXT({ PVRTexToolCLI, file, hasAlpha });
     }
 }
 
@@ -107,6 +116,32 @@ function convertToASTC({ PVRTexToolCLI, file, quality }: CliConverterProps) {
     shelljs.exec(`${PVRTexToolCLI} -i "${file}" -flip y -pot + -m -f ASTC_8x8,UBN,lRGB -q ${fileQuality} -o "${filename}-astc.ktx"`);
 }
 
+function convertToDXT({ PVRTexToolCLI, file, hasAlpha }: CliConverterProps) {
+    const filename = file.substr(0, file.lastIndexOf("."));
+    const format = hasAlpha ? "BC2" : "BC1"
+    // tslint:disable-next-line:max-line-length
+    shelljs.exec(`${PVRTexToolCLI} -i "${file}" -flip y -pot + -m -f "${format}",UBN,lRGB -o "${filename}-dxt.ktx"`);
+}
+
+function hasAlpha(png: string, fn: (err: ErrnoException | undefined, a?: boolean) => any) :any {
+    if ('string' == typeof png) return fromFile(png, fn);
+    return 6 == png[25];
+}
+
+function fromFile(file: string, fn: (err: ErrnoException | undefined, a?: boolean) => any) :any {
+    var buf = new Buffer(1);
+    fs.open(file, 'r', function(err, fd){
+        if (err) return fn(err);
+        fs.read(fd, buf, 0, 1, 25, function(err, read, buf){
+            if (err) return fn(err);
+            fs.close(fd, function(err){
+                fn(err, 6 == buf[0]);
+            });
+        });
+    });
+}
+
 if (module && module.hasOwnProperty("exports")) {
     module.exports = generateTextures;
 }
+
