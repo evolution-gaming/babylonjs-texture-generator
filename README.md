@@ -23,6 +23,7 @@ Import/require the exposed function `generateTextures` to your script. It accept
 * `inputDir` - *string*: The directory where the image files are located. It will be read recursively and all the images will be used in order to generate the new textures.
 * `quality` - *string (optional), (options "low"/"high", default: "high")*: The quality of the exported textures.
 * `exportFormats` - *string[] (optional) (options "PVRTC"/"ETC1"/"ETC2"/"ASTC"/"DXT", default: ["PVRTC", "ETC1", "ETC2", "ASTC", "DXT"])*: The format of the exported textures.
+* `async` - *boolean (optional, default: false)*: Whether the task should run asynchronously.
 
 Example usage:
 ```javascript
@@ -34,10 +35,11 @@ createGpuTexture({
     PVRTexToolCLI: "/Applications/Imagination/PowerVR_Graphics/PowerVR_Tools/PVRTexTool/CLI/OSX_x86/PVRTexToolCLI",
     inputDir: "/src",
     quality: "high",
+    async: false,
     exportFormats: ["PVRTC", "ETC1", "ETC2", "ASTC", "DXT"]
 });
 ```
 
 ### Limitations
 
-DXT files can not be exported on MacOS currently.
+Currently DXT files can not be exported on MacOS.
