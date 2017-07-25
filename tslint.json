@@ -47,6 +47,7 @@
       "ban-keywords",
       "allow-pascal-case"
     ],
+    "no-console": false,
     "no-constant-condition": true,
     "no-control-regex": true,
     "no-duplicate-case": true,

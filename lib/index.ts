@@ -7,6 +7,7 @@ export enum TextureType {
     ETC1 = "ETC1",
     ETC2 = "ETC2",
     ASTC = "ASTC",
+    DXT = "DXT",
 }
 
 export enum TextureQuality {
@@ -24,7 +25,7 @@ export interface TextureGeneratorProps {
 interface CliConverterProps {
     PVRTexToolCLI: string;
     file: string;
-    quality: string;
+    quality?: string;
     hasAlpha?: boolean;
 }
 
@@ -38,8 +39,14 @@ export default function generateTextures(
         PVRTexToolCLI,
         inputDir,
         quality = TextureQuality.HIGH,
-        exportFormats = [TextureType.PVRTC, TextureType.ETC1, TextureType.ETC2, TextureType.ASTC],
+        exportFormats = [TextureType.PVRTC, TextureType.ETC1, TextureType.ETC2, TextureType.ASTC, TextureType.DXT],
     }: TextureGeneratorProps) {
+    // Mac does not support DXT format
+    const indexOfDXT = exportFormats.indexOf(TextureType.DXT);
+    if (process.platform === "darwin" && indexOfDXT >= 0) {
+        console.warn("DXT format is not supported on MacOS");
+        exportFormats.splice(indexOfDXT, 1);
+    }
     readImages({ PVRTexToolCLI, inputDir, quality, exportFormats });
 }
 
@@ -71,6 +78,9 @@ function convertImage({ PVRTexToolCLI, file, quality, hasAlpha, exportFormats }:
     }
     if (exportFormats.indexOf(TextureType.ASTC) >= 0) {
         convertToASTC({ PVRTexToolCLI, file, quality });
+    }
+    if (exportFormats.indexOf(TextureType.DXT) >= 0) {
+        convertToDXT({ PVRTexToolCLI, file, hasAlpha });
     }
 }
 
@@ -105,6 +115,13 @@ function convertToASTC({ PVRTexToolCLI, file, quality }: CliConverterProps) {
     const fileQuality = quality === TextureQuality.HIGH ? "astcexhaustive" : "astcveryfast";
     // tslint:disable-next-line:max-line-length
     shelljs.exec(`${PVRTexToolCLI} -i "${file}" -flip y -pot + -m -f ASTC_8x8,UBN,lRGB -q ${fileQuality} -o "${filename}-astc.ktx"`);
+}
+
+function convertToDXT({ PVRTexToolCLI, file, hasAlpha }: CliConverterProps) {
+    const filename = file.substr(0, file.lastIndexOf("."));
+    const format = hasAlpha ? "BC2" : "BC1";
+    // tslint:disable-next-line:max-line-length
+    shelljs.exec(`${PVRTexToolCLI} -i "${file}" -flip y -pot + -m -f ${format},UBN,lRGB -o "${filename}-dxt.ktx"`);
 }
 
 if (module && module.hasOwnProperty("exports")) {
