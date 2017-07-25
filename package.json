@@ -1,7 +1,7 @@
 {
   "name": "babylonjs-texture-generator",
   "version": "1.0.1",
-  "description": "A tool that generates PVRTC, ETC1, ETC2, ASTC textures from png and jpg files.",
+  "description": "A tool that generates PVRTC, ETC1, ETC2, ASTC, DXT textures from png and jpg files.",
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
