@@ -1,5 +1,5 @@
 import { join } from "path";
-import { stat, statSync, readdir, readdirSync, open, openSync, read, readSync, close, closeSync, Stats } from "fs";
+import { stat, statSync, readdir, readdirSync, open, openSync, read, readSync, close, closeSync, Stats, existsSync } from "fs";
 import * as shelljs from "shelljs";
 
 export enum TextureType {
@@ -29,9 +29,14 @@ interface CliConverterProps {
     quality?: string;
     hasAlpha?: boolean;
     async: boolean;
+    isCube: boolean;
 }
 
 type ImageConverterProps = CliConverterProps & { exportFormats: string[] };
+
+
+//cubeface file-name-suffixes in texture's face order.
+const cubeFacesSuffixes = ["_px", "_nx", "_py", "_ny", "_pz", "_nz"];
 
 /**
  * Generates gpu textures from png and jpg files
@@ -59,8 +64,20 @@ function readImages({ PVRTexToolCLI, inputDir, quality, exportFormats, async }: 
             readImages({ PVRTexToolCLI, inputDir: filePath, quality, exportFormats, async });
         } else {
             const extension = fileName.substr(fileName.lastIndexOf(".") + 1).toLowerCase();
+
+            const possibleCubeFaces = getCubeTextureFiles(filePath, fileName);
+            var isCube = false;
+            if (possibleCubeFaces.length > 0) {
+                //but only convertImage on the first face
+                const exp = new RegExp(cubeFacesSuffixes[0] + "." + extension + "$");
+                if (!exp.test(fileName))
+                    return;
+                isCube = true;
+                filePath = possibleCubeFaces;
+            }
+
             if (["jpg", "jpeg"].indexOf(extension) >= 0) {
-                convertImage({ PVRTexToolCLI, file: filePath, quality, hasAlpha: false, exportFormats, async });
+                convertImage({ PVRTexToolCLI, file: filePath, quality, hasAlpha: false, exportFormats, async, isCube });
             } else if (extension === "png") {
                 if (async) {
                     hasAlphaAsync(filePath, (hasAlpha: boolean) => {
@@ -71,6 +88,7 @@ function readImages({ PVRTexToolCLI, inputDir, quality, exportFormats, async }: 
                             hasAlpha,
                             exportFormats,
                             async,
+                            isCube
                         });
                     });
                 } else {
@@ -81,6 +99,7 @@ function readImages({ PVRTexToolCLI, inputDir, quality, exportFormats, async }: 
                         hasAlpha: hasAlphaSync(filePath),
                         exportFormats,
                         async,
+                        isCube
                     });
                 }
             }
@@ -120,7 +139,7 @@ function hasAlphaAsync(file: string, callback: (hasAlpha: boolean) => void) {
                 throw readErr;
             }
             callback(6 === buf[0]);
-            close(fd);
+            close(fd, function () { });
         });
     });
 }
@@ -133,75 +152,96 @@ function hasAlphaSync(file: string): boolean {
     return 6 === buffer[0];
 }
 
-function convertImage({ PVRTexToolCLI, file, quality, hasAlpha, exportFormats, async }: ImageConverterProps) {
+function getCubeTextureFiles(filePath: string, fileName: string): string {
+    const extension = fileName.substr(fileName.lastIndexOf(".") + 1).toLowerCase();
+
+    const exp = new RegExp("(" + cubeFacesSuffixes.join("|") + ")." + extension + "$");
+    let paths = "";
+    if (exp.test(fileName)) {
+        //check other faces exist
+        let exp2 = new RegExp(fileName + "$");
+        let prePath = filePath.replace(exp2, "");
+        let preFileName = fileName.replace(exp, "");
+        for (let i = 0; i < cubeFacesSuffixes.length; i++) {
+            let fpath = prePath + preFileName + cubeFacesSuffixes[i] + "." + extension;
+            if (existsSync(fpath))
+                paths += fpath + (i == 5 ? "" : ",");
+            else
+                return "";
+        }
+    }
+    return paths;
+}
+
+function convertImage({ PVRTexToolCLI, file, quality, hasAlpha, exportFormats, async, isCube }: ImageConverterProps) {
     if (exportFormats.indexOf(TextureType.PVRTC) >= 0) {
-        convertToPVRTC({ PVRTexToolCLI, file, quality, hasAlpha, async });
+        convertToPVRTC({ PVRTexToolCLI, file, quality, hasAlpha, async, isCube });
     }
     if (exportFormats.indexOf(TextureType.ETC1) >= 0) {
-        convertToETC1({ PVRTexToolCLI, file, quality, hasAlpha, async });
+        convertToETC1({ PVRTexToolCLI, file, quality, hasAlpha, async, isCube });
     }
     if (exportFormats.indexOf(TextureType.ETC2) >= 0) {
-        convertToETC2({ PVRTexToolCLI, file, quality, hasAlpha, async });
+        convertToETC2({ PVRTexToolCLI, file, quality, hasAlpha, async, isCube });
     }
     if (exportFormats.indexOf(TextureType.ASTC) >= 0) {
-        convertToASTC({ PVRTexToolCLI, file, quality, async });
+        convertToASTC({ PVRTexToolCLI, file, quality, async, isCube });
     }
     if (exportFormats.indexOf(TextureType.DXT) >= 0) {
-        convertToDXT({ PVRTexToolCLI, file, hasAlpha, async });
+        convertToDXT({ PVRTexToolCLI, file, hasAlpha, async, isCube });
     }
 }
 
-function convertToPVRTC({ PVRTexToolCLI, file, quality, hasAlpha, async }: CliConverterProps) {
-    const filename = file.substr(0, file.lastIndexOf("."));
+function convertToPVRTC({ PVRTexToolCLI, file, quality, hasAlpha, async, isCube }: CliConverterProps) {
+    const filename = isCube ? file.substr(0, file.split(",")[0].lastIndexOf(cubeFacesSuffixes[0] + ".")) : file.substr(0, file.lastIndexOf("."));
     const format = hasAlpha ? "PVRTC1_2" : "PVRTC1_2_RGB";
     const fileQuality = quality === TextureQuality.HIGH ? "pvrtcbest" : "pvrtcfastest";
     // tslint:disable-next-line:max-line-length
     shelljs.exec(
-        `${PVRTexToolCLI} -i "${file}" -flip y -pot + -square + -m -dither -f ${format},UBN,lRGB -q ${fileQuality} -o "${filename}-pvrtc.ktx"`,
+        `${PVRTexToolCLI} -i "${file}" ${isCube ? "-cube" : "-flip y"} -pot + -square + -m -dither -f ${format},UBN,lRGB -q ${fileQuality} -o "${filename}-pvrtc.ktx"`,
         { async },
     );
 }
 
-function convertToETC1({ PVRTexToolCLI, file, quality, hasAlpha, async }: CliConverterProps) {
+function convertToETC1({ PVRTexToolCLI, file, quality, hasAlpha, async, isCube }: CliConverterProps) {
     if (hasAlpha) {
         return;
     }
-    const filename = file.substr(0, file.lastIndexOf("."));
+    const filename = isCube ? file.substr(0, file.split(",")[0].lastIndexOf(cubeFacesSuffixes[0] + ".")) : file.substr(0, file.lastIndexOf("."));
     const fileQuality = quality === TextureQuality.HIGH ? "etcslowperceptual" : "etcfast";
     // tslint:disable-next-line:max-line-length
     shelljs.exec(
-        `${PVRTexToolCLI} -i "${file}" -flip y -pot + -m -f ETC1,UBN,lRGB -q ${fileQuality} -o "${filename}-etc1.ktx"`,
+        `${PVRTexToolCLI} -i "${file}" ${isCube ? "-cube" : "-flip y"} -pot + -m -f ETC1,UBN,lRGB -q ${fileQuality} -o "${filename}-etc1.ktx"`,
         { async },
     );
 }
 
-function convertToETC2({ PVRTexToolCLI, file, quality, hasAlpha, async }: CliConverterProps) {
-    const filename = file.substr(0, file.lastIndexOf("."));
+function convertToETC2({ PVRTexToolCLI, file, quality, hasAlpha, async, isCube }: CliConverterProps) {
+    const filename = isCube ? file.substr(0, file.split(",")[0].lastIndexOf(cubeFacesSuffixes[0] + ".")) : file.substr(0, file.lastIndexOf("."));
     const format = hasAlpha ? "ETC2_RGBA" : "ETC2_RGB";
     const fileQuality = quality === TextureQuality.HIGH ? "etcslowperceptual" : "etcfast";
     // tslint:disable-next-line:max-line-length
     shelljs.exec(
-        `${PVRTexToolCLI} -i "${file}" -flip y -pot + -m -f ${format},UBN,lRGB -q ${fileQuality} -o "${filename}-etc2.ktx"`,
+        `${PVRTexToolCLI} -i "${file}" ${isCube ? "-cube" : "-flip y"} -pot + -m -f ${format},UBN,lRGB -q ${fileQuality} -o "${filename}-etc2.ktx"`,
         { async },
     );
 }
 
-function convertToASTC({ PVRTexToolCLI, file, quality, async }: CliConverterProps) {
-    const filename = file.substr(0, file.lastIndexOf("."));
+function convertToASTC({ PVRTexToolCLI, file, quality, async, isCube }: CliConverterProps) {
+    const filename = isCube ? file.substr(0, file.split(",")[0].lastIndexOf(cubeFacesSuffixes[0] + ".")) : file.substr(0, file.lastIndexOf("."));
     const fileQuality = quality === TextureQuality.HIGH ? "astcexhaustive" : "astcveryfast";
     // tslint:disable-next-line:max-line-length
     shelljs.exec(
-        `${PVRTexToolCLI} -i "${file}" -flip y -pot + -m -f ASTC_8x8,UBN,lRGB -q ${fileQuality} -o "${filename}-astc.ktx"`,
+        `${PVRTexToolCLI} -i "${file}" ${isCube ? "-cube" : "-flip y"} -pot + -m -f ASTC_8x8,UBN,lRGB -q ${fileQuality} -o "${filename}-astc.ktx"`,
         { async },
     );
 }
 
-function convertToDXT({ PVRTexToolCLI, file, hasAlpha, async }: CliConverterProps) {
-    const filename = file.substr(0, file.lastIndexOf("."));
+function convertToDXT({ PVRTexToolCLI, file, hasAlpha, async, isCube }: CliConverterProps) {
+    const filename = isCube ? file.substr(0, file.split(",")[0].lastIndexOf(cubeFacesSuffixes[0] + ".")) : file.substr(0, file.lastIndexOf("."));
     const format = hasAlpha ? "BC2" : "BC1";
     // tslint:disable-next-line:max-line-length
     shelljs.exec(
-        `${PVRTexToolCLI} -i "${file}" -flip y -pot + -m -f ${format},UBN,lRGB -o "${filename}-dxt.ktx"`,
+        `${PVRTexToolCLI} -i "${file}" ${isCube ? "-cube" : "-flip y"} -pot + -m -f ${format},UBN,lRGB -o "${filename}-dxt.ktx"`,
         { async },
     );
 }
