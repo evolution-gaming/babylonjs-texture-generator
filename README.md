@@ -10,7 +10,7 @@ It is meant to work with [Babylon.js](https://github.com/BabylonJS/Babylon.js). 
 
 In order to use the tool, you need to have installed:
 
-* PVRTexToolCLI ([download](https://community.imgtec.com/developers/powervr/installers/))
+* PVRTexToolCLI ([download](https://www.imgtec.com/developers/powervr-sdk-tools/installers/))
 * ASTC Evaluation Codec ([download](https://github.com/ARM-software/astc-encoder/tree/master/Binary))
 * Add *ASTC Evaluation Codec* to your path, a process which depends on your OS. ([documentation](http://cdn.imgtec.com/sdk-documentation/PVRTexTool.User+Manual.pdf) at page 5)
 * Run `npm run build` in terminal
