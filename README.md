@@ -1,5 +1,9 @@
 # Babylonjs texture generator
 
+⚠️ **babylonjs-texture-generator** is deprecated.
+
+> This package is deprecated and no longer supported or updated.
+
 ## About
 
 This is a tool that generates PVRTC, ETC1, ETC2, ASTC, DXT textures from png and jpg files. It can run on node or as a gulp task.
