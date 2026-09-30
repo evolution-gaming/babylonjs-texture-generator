@@ -2,7 +2,7 @@
 
 ⚠️ **babylonjs-texture-generator** is deprecated.
 
-> This package is deprecated and longer supported or updated.
+> This package is deprecated and no longer supported or updated.
 
 ## About
 
